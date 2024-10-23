@@ -1,5 +1,6 @@
 ﻿using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace ImagePuzzle
@@ -220,7 +221,10 @@ namespace ImagePuzzle
             gameFinishCanvas.SetActive(true);
             TotalTime_TMP.text = "Total Time : " + time;
             stepTakenToFinished_TMP.text = "Total Steps : " + stepTaken;
+        }
 
+        public void Replay(){
+            SceneManager.LoadScene(0);
         }
     }
 
