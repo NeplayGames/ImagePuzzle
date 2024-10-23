@@ -9,7 +9,6 @@ public class GameController : MonoBehaviour
     private EachImage EachImageToAnimate;
     private int toAnimateI, toAnimateJ;
 
-    private GameState gameState;
     [SerializeField] int MaxColumns = 4;
     [SerializeField] int MaxRows = 4;
     [SerializeField] Text stepTakenText;
@@ -17,32 +16,26 @@ public class GameController : MonoBehaviour
     [SerializeField] Text timePassed;
     [SerializeField] Text stepTakenToFinished;
     [SerializeField] GameObject gameFinished;
+    EachImage transferPoint;
 
     AudioSource audioSource;
     [SerializeField] AudioClip click;
     [SerializeField] AudioClip cheer;
-    enum GameState
-    {
-        Playing,
-        Animating,
-    }
+   
     [SerializeField] Transform go;
-    [SerializeField] float AnimSpeed = 10f;
     int time = 0;
     public System.DateTime startTime;
     bool gameOver = false;
+    int stepTaken = 0;
+
     void Start()
     {
         audioSource = GetComponent<AudioSource>();
-        gameState = GameState.Playing;
         for (int i = 0; i < MaxColumns; i++)
         {
             for (int j = 0; j < MaxRows; j++)
             {
                 EachImages[i, j] = go.GetChild(i * MaxColumns + j).gameObject.GetComponent<EachImage>();
-
-                //Vector3 point = GetScreenCordinate(i, j);
-                // go.GetChild(i * MaxColumns + j).position = point;
             }
         }
         Shuffle();
@@ -83,7 +76,7 @@ public class GameController : MonoBehaviour
 
             }
             CheckIfTheValueIsInRange(ref i, ref j);
-            pos = EachImages[i,j].transform.position;
+            pos = EachImages[i, j].transform.position;
             if (FindIfEmptySpaceExits(i, j))
             {
                 Swap(toAnimateI, toAnimateJ, i, j);
@@ -96,7 +89,7 @@ public class GameController : MonoBehaviour
     ///</summary>
     private void Swap(int i, int j, int ri, int rj)
     {
-
+        print("Swapped");
         EachImage temp = EachImages[i, j];
         EachImages[i, j] = EachImages[ri, rj];
         EachImages[ri, rj] = temp;
@@ -125,16 +118,7 @@ public class GameController : MonoBehaviour
     void Update()
     {
         if (gameOver) return;
-        switch (gameState)
-        {
-            case GameState.Playing:
-                CheckInput();
-                break;
-            case GameState.Animating:
-                AnimateMovement(transferPoint, Time.deltaTime);
-                CheckIfAnimationEnded();
-                break;
-        }
+        CheckInput();
         System.TimeSpan ts = System.DateTime.UtcNow - startTime;
         if (ts.Seconds != time)
         {
@@ -142,33 +126,7 @@ public class GameController : MonoBehaviour
             timePassed.text = "Total TiME : " + time;
         }
     }
-      private void AnimateMovement(EachImage toMove,  float time)
-    {
-        //animate it
-        //Lerp could also be used, but I prefer the MoveTowards approach :)
-        toMove.transform.position = Vector2.MoveTowards(toMove.transform.position, 
-          screenPositionToAnimate , time * AnimSpeed);
-        
-    }
 
-    /// <summary>
-    /// A simple check to see if the animation has finished
-    /// </summary>
-    private void CheckIfAnimationEnded()
-    {
-        if(Vector2.Distance(transferPoint.transform.position, 
-            screenPositionToAnimate) < 0.1f)
-        {
-            //make sure they swap, exchange positions and stuff
-            Swap(transferPoint.CurrentRow, transferPoint.CurrentColumn, toAnimateI, toAnimateJ);
-            EachImages[MaxRows-1,MaxColumns-1].transform.position = pos;
-            gameState = GameState.Playing;
-
-            //check if the use has won
-            CheckForVictory();
-        }
-    }
-    EachImage transferPoint;
     ///<summary>
     ///Check if the player touch/ press above the piece
     ///</summary>
@@ -180,40 +138,40 @@ public class GameController : MonoBehaviour
             RaycastHit2D hit = Physics2D.Raycast(ray.origin, ray.direction);
             if (hit.collider != null)
             {
-                transferPoint = EachImages[toAnimateI,toAnimateJ];
+                transferPoint = EachImages[toAnimateI, toAnimateJ];
                 screenPositionToAnimate = transferPoint.transform.position;
                 EachImage foundEachImage = hit.transform.GetComponent<EachImage>();
                 int CurrentRow = foundEachImage.CurrentRow;
                 int CurrentColumn = foundEachImage.CurrentColumn;
-                bool EachImageFound = false;
-                EachImageFound = FindIfEmptySpaceExits(CurrentRow, CurrentColumn);
-                if (EachImageFound)
+                if (FindIfEmptySpaceExits(CurrentRow, CurrentColumn))
                     IsImageAvailable(CurrentRow, CurrentColumn);
+                CheckForVictory();
+
             }
         }
     }
 
     private bool FindIfEmptySpaceExits(int CurrentRow, int CurrentColumn)
     {
-        if (CurrentRow - 1 >= 0 && EachImages[CurrentRow - 1, CurrentColumn].isInActive == true)
+        if (CurrentRow - 1 >= 0 && EachImages[CurrentRow - 1, CurrentColumn].isInActive)
         {
             toAnimateI = CurrentRow - 1; toAnimateJ = CurrentColumn;
             return true;
 
         }
-        else if (CurrentColumn - 1 >= 0 && EachImages[CurrentRow, CurrentColumn - 1].isInActive == true)
+        else if (CurrentColumn - 1 >= 0 && EachImages[CurrentRow, CurrentColumn - 1].isInActive)
         {
 
             toAnimateI = CurrentRow; toAnimateJ = CurrentColumn - 1;
             return true;
         }
-        else if (CurrentRow + 1 < MaxRows && EachImages[CurrentRow + 1, CurrentColumn].isInActive == true)
+        else if (CurrentRow + 1 < MaxRows && EachImages[CurrentRow + 1, CurrentColumn].isInActive)
         {
 
             toAnimateI = CurrentRow + 1; toAnimateJ = CurrentColumn;
             return true;
         }
-        else if (CurrentColumn + 1 < MaxColumns && EachImages[CurrentRow, CurrentColumn + 1].isInActive == true)
+        else if (CurrentColumn + 1 < MaxColumns && EachImages[CurrentRow, CurrentColumn + 1].isInActive)
         {
 
             toAnimateI = CurrentRow; toAnimateJ = CurrentColumn + 1;
@@ -221,14 +179,12 @@ public class GameController : MonoBehaviour
         }
         return false;
     }
-    int stepTaken;
     private void IsImageAvailable(int CurrentRow, int CurrentColumn)
     {
         PlayAudio(click);
         EachImageToAnimate = EachImages[CurrentRow, CurrentColumn];
         EachImageToAnimate.CurrentRow = CurrentRow;
         EachImageToAnimate.CurrentColumn = CurrentColumn;
-        gameState = GameState.Animating;
         stepTaken++;
         stepTakenText.text = "Steps Taken: " + stepTaken;
         Swap(EachImageToAnimate.CurrentRow, EachImageToAnimate.CurrentColumn, toAnimateI, toAnimateJ);
@@ -240,10 +196,6 @@ public class GameController : MonoBehaviour
         audioSource.clip = clip;
         audioSource.Play();
     }
-
-
-
-
 
     /// <summary>
     /// Identify if all the image piece are in right position
